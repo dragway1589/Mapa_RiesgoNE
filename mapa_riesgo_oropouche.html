@@ -75,6 +75,27 @@
             display: inline-block;
             width: 80px;
         }
+        /* Estilos para marcadores de predicción */
+        .pulse-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff0000;
+            position: relative;
+            box-shadow: 0 0 0 rgba(255, 0, 0, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 0, 0, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+            }
+        }
     </style>
 </head>
 <body>
@@ -96,27 +117,20 @@
         
         // Inicialización del mapa
         function initMap() {
-            // Configuración inicial del mapa centrado en Nueva Esparta
             map = L.map('map', {
                 center: [11.0, -64.0],
                 zoom: 10,
                 zoomControl: true,
-                preferCanvas: true // Mejor rendimiento para muchos marcadores
+                preferCanvas: true
             });
             
-            // Capa base de OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 18
             }).addTo(map);
             
-            // Añadir leyenda interactiva
             addLegend();
-            
-            // Configurar comunicación con la ventana padre
             setupParentCommunication();
-            
-            // Notificar que el mapa está listo
             window.parent.postMessage({ type: 'mapReady' }, '*');
         }
         
@@ -140,6 +154,10 @@
                         <div class="legend-color" style="background-color: #44cc44"></div>
                         <span>Bajo</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="pulse-marker" style="margin-right: 10px;"></div>
+                        <span>Riesgo emergente</span>
+                    </div>
                 `;
                 return div;
             };
@@ -160,27 +178,20 @@
         // Actualizar datos del mapa
         function updateMapData(data, predictions = null) {
             showLoading(true);
-            
-            // Limpiar marcadores existentes
             clearMarkers();
             
-            // Validar y procesar datos
             if (!data || data.length === 0) {
                 showLoading(false);
                 return;
             }
             
-            // Procesar datos de riesgo
             processRiskData(data);
             
-            // Procesar predicciones si existen
             if (predictions && predictions.zonasEmergentes) {
                 processPredictions(predictions.zonasEmergentes);
             }
             
-            // Ajustar vista del mapa
             adjustMapView();
-            
             showLoading(false);
         }
         
@@ -224,10 +235,7 @@
                 fillOpacity: 0.8
             });
             
-            // Configurar popup
             marker.bindPopup(createPopupContent(item));
-            
-            // Configurar tooltip
             marker.bindTooltip(
                 `${item.ASIC || 'Zona'} - Riesgo ${item.Riesgo || 'desconocido'}`,
                 { direction: 'top', permanent: false }

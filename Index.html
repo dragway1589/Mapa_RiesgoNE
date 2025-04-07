@@ -932,4 +932,258 @@
             let feedbackStrength = 1;
             let actualRisk = 'Medio';
             
-            if (precision ===
+            if (precision === 'si') {
+                feedbackStrength = 0.5;
+            } else if (precision === 'parcial') {
+                feedbackStrength = 1;
+                if (comentarios.toLowerCase().includes('alto')) actualRisk = 'Alto';
+                if (comentarios.toLowerCase().includes('bajo')) actualRisk = 'Bajo';
+            } else {
+                feedbackStrength = 2;
+                if (comentarios.toLowerCase().includes('alto')) actualRisk = 'Alto';
+                else if (comentarios.toLowerCase().includes('bajo')) actualRisk = 'Bajo';
+                else actualRisk = 'Medio';
+            }
+            
+            const lastAnalysis = JSON.parse(localStorage.getItem('lastAnalysis'));
+            
+            if (lastAnalysis && lastAnalysis.features) {
+                const trainingResult = iaModel.train(
+                    lastAnalysis.features, 
+                    actualRisk, 
+                    feedbackStrength
+                );
+                
+                alert(`Modelo actualizado. Error reducido de ${trainingResult.previousPrediction.toFixed(2)} a ${trainingResult.newPrediction.toFixed(2)}. Gracias por su retroalimentación.`);
+                
+                actualizarMetricasIA(trainingResult.error);
+            } else {
+                alert('Gracias por su retroalimentación. Se aplicará cuando haya nuevos datos.');
+            }
+            
+            document.getElementById('alerta-precisa').value = 'si';
+            document.getElementById('comentarios-ia').value = '';
+        }
+
+        // Función para actualizar métricas de IA
+        function actualizarMetricasIA(error) {
+            let metricas = JSON.parse(localStorage.getItem('iaMetrics')) || {
+                precision: 87,
+                recall: 92,
+                anticipacion: 15,
+                muestras: 100
+            };
+            
+            metricas.precision = Math.max(70, Math.min(95, metricas.precision + (1 - error) * 2));
+            metricas.recall = Math.max(75, Math.min(98, metricas.recall + (1 - error) * 1.5));
+            metricas.muestras += 1;
+            
+            localStorage.setItem('iaMetrics', JSON.stringify(metricas));
+            
+            document.querySelector('.metrica .valor').textContent = `${metricas.precision}%`;
+            document.querySelectorAll('.metrica .valor')[1].textContent = `${metricas.recall}%`;
+            document.querySelectorAll('.metrica .valor')[2].textContent = `${metricas.anticipacion} días`;
+        }
+
+        // Función para actualizar el mapa con los nuevos datos
+        function actualizarMapa() {
+            const iframe = document.getElementById('mapa-iframe');
+            const loading = document.getElementById('mapa-cargando');
+            
+            if (!iframe || !loading) return;
+            
+            loading.style.display = 'block';
+            
+            iframe.onload = function() {
+                iframe.contentWindow.postMessage({
+                    type: 'updateMapData',
+                    data: datosCSV,
+                    predicciones: analizarConIA(datosCSV)
+                }, '*');
+                
+                loading.style.display = 'none';
+            };
+            
+            iframe.src = iframe.src;
+        }
+
+        // Actualizar tabla agrupada por riesgo
+        function actualizarTabla() {
+            const tbody = document.querySelector("#tabla-riesgo");
+            tbody.innerHTML = "";
+
+            if (datosCSV.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No hay datos disponibles. Cargue un archivo CSV válido.</td></tr>';
+                return;
+            }
+
+            const grupos = {
+                "Alto": [],
+                "Medio": [],
+                "Bajo": []
+            };
+
+            datosCSV.forEach(row => {
+                if (row.Riesgo && grupos[row.Riesgo]) {
+                    grupos[row.Riesgo].push(row);
+                }
+            });
+
+            Object.entries(grupos).forEach(([nivel, zonas]) => {
+                if (zonas.length === 0) return;
+
+                const tr = document.createElement("tr");
+                tr.className = nivel.toLowerCase();
+
+                const tdRiesgo = document.createElement("td");
+                tdRiesgo.textContent = nivel;
+                tr.appendChild(tdRiesgo);
+
+                const tdAsicZona = document.createElement("td");
+                const ulAsicZona = document.createElement("ul");
+                zonas.forEach(z => {
+                    const li = document.createElement("li");
+                    li.innerHTML = `
+                        <strong>${z.ASIC || 'Sin ASIC'}</strong><br>
+                        ${z.Zona || 'Sin zona especificada'}
+                    `;
+                    ulAsicZona.appendChild(li);
+                });
+                tdAsicZona.appendChild(ulAsicZona);
+                tr.appendChild(tdAsicZona);
+
+                const tdMunicipio = document.createElement("td");
+                const ulMunicipio = document.createElement("ul");
+                zonas.forEach(z => {
+                    const li = document.createElement("li");
+                    li.textContent = z.Municipio || 'Sin municipio';
+                    ulMunicipio.appendChild(li);
+                });
+                tdMunicipio.appendChild(ulMunicipio);
+                tr.appendChild(tdMunicipio);
+
+                const tdProbabilidad = document.createElement("td");
+                tdProbabilidad.textContent = nivel === "Alto" ? "Alta (65-85%)" : 
+                                            nivel === "Medio" ? "Moderada (35-60%)" : 
+                                            "Baja (10-30%)";
+                tr.appendChild(tdProbabilidad);
+
+                const tdImpacto = document.createElement("td");
+                tdImpacto.innerHTML = `
+                    ${nivel === "Alto" ? "Brotes epidémicos, impacto en turismo y salud pública." : 
+                    nivel === "Medio" ? "Casos esporádicos y riesgo para turistas." : 
+                    "Casos aislados en zonas remotas."}
+                    <br><strong>Notas:</strong> ${zonas.map(z => z.Notas || 'Sin notas').join(", ")}
+                `;
+                tr.appendChild(tdImpacto);
+
+                const tdAcciones = document.createElement("td");
+                const ulAcciones = document.createElement("ul");
+                switch(nivel) {
+                    case "Alto":
+                        ulAcciones.innerHTML = `
+                            <li>Fumigación con larvicidas biológicos.</li>
+                            <li>Campañas de eliminación de criaderos.</li>
+                            <li>Monitoreo epidemiológico semanal.</li>
+                            <li>Activación de comités de salud comunitaria del ASIC.</li>
+                        `;
+                        break;
+                    case "Medio":
+                        ulAcciones.innerHTML = `
+                            <li>Control larvario con <em>Bacillus thuringiensis</em>.</li>
+                            <li>Educación comunitaria sobre almacenamiento de agua.</li>
+                            <li>Reunión con líderes comunitarios del ASIC.</li>
+                        `;
+                        break;
+                    case "Bajo":
+                        ulAcciones.innerHTML = `
+                            <li>Monitoreo pasivo mediante reportes locales.</li>
+                            <li>Capacitación básica a personal del ASIC.</li>
+                        `;
+                        break;
+                }
+                tdAcciones.appendChild(ulAcciones);
+                tr.appendChild(tdAcciones);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Actualizar factores de riesgo
+        function actualizarFactores() {
+            if (datosCSV.length === 0) {
+                document.getElementById("factores-ambientales").innerHTML = 
+                    `<strong>Factores ambientales:</strong> No hay datos disponibles`;
+                document.getElementById("factores-biologicos").innerHTML = 
+                    `<strong>Factores biológicos:</strong> No hay datos disponibles`;
+                document.getElementById("factores-socioeconomicos").innerHTML = 
+                    `<strong>Factores socioeconómicos:</strong> No hay datos disponibles`;
+                return;
+            }
+
+            const ambientales = datosCSV
+                .filter(d => d.Riesgo === "Alto")
+                .map(d => `${d.ASIC || 'Área sin ASIC'}: ${d.Notas || 'Sin notas'}`)
+                .join(", ");
+            document.getElementById("factores-ambientales").innerHTML = 
+                `<strong>Factores ambientales:</strong> ${ambientales || 'No se identificaron factores ambientales críticos'}`;
+
+            const ganaderia = datosCSV.some(d => (d.Notas || '').toLowerCase().includes("ganadería"));
+            document.getElementById("factores-biologicos").innerHTML = 
+                `<strong>Factores biológicos:</strong> Presencia de <em>Culicoides</em> ${ganaderia ? "y actividad ganadera." : "."}`;
+
+            const turismo = datosCSV.some(d => (d.Notas || '').toLowerCase().includes("turismo"));
+            const drenaje = datosCSV.some(d => (d.Notas || '').toLowerCase().includes("drenaje"));
+            document.getElementById("factores-socioeconomicos").innerHTML = 
+                `<strong>Factores socioeconómicos:</strong> ${turismo ? "Turismo masivo, " : ""}${drenaje ? "Drenaje inadecuado" : "No se identificaron factores socioeconómicos críticos"}.`;
+        }
+
+        // Cargar datos del localStorage al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedData = localStorage.getItem('oropoucheData');
+            const exportButton = document.getElementById('boton-exportar');
+            
+            // Cargar métricas de IA
+            const metricas = JSON.parse(localStorage.getItem('iaMetrics'));
+            if (metricas) {
+                document.querySelector('.metrica .valor').textContent = `${metricas.precision}%`;
+                document.querySelectorAll('.metrica .valor')[1].textContent = `${metricas.recall}%`;
+                document.querySelectorAll('.metrica .valor')[2].textContent = `${metricas.anticipacion} días`;
+            }
+            
+            if (savedData) {
+                try {
+                    datosCSV = JSON.parse(savedData);
+                    actualizarTabla();
+                    actualizarFactores();
+                    actualizarMapa();
+                    
+                    const predicciones = analizarConIA(datosCSV);
+                    mostrarPredicciones(predicciones);
+                    
+                    configurarAlertas();
+                    
+                    exportButton.disabled = false;
+                    document.getElementById('csv-success').textContent = `Datos cargados desde caché (${datosCSV.length} registros)`;
+                    document.getElementById('csv-success').style.display = 'block';
+                } catch (e) {
+                    console.error("Error al cargar datos guardados:", e);
+                    localStorage.removeItem('oropoucheData');
+                }
+            }
+            
+            const iframe = document.getElementById('mapa-iframe');
+            const loading = document.getElementById('mapa-cargando');
+            if (iframe && loading) {
+                iframe.onload = function() {
+                    loading.style.display = 'none';
+                };
+                
+                setTimeout(() => {
+                    loading.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>

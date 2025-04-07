@@ -1,0 +1,12 @@
+ASIC,Municipio,Zona,Latitud,Longitud,Riesgo,Notas
+ASIC 5,Antolín del Campo,Pozo de Agua,11.1372345,-63.8650274,Alto,"Zona costera con estancamiento de agua"
+ASIC 3,Mariño,Porlamar (Barrios periféricos y Comercios),10.963560,-63.846447,Alto,"Drenaje inadecuado y alta densidad poblacional"
+ASIC 2,Diaz,El Yaque (Playas turísticas),10.897200,-63.964664,Medio,"Movilidad turística y posible exposición"
+ASIC 1,Peninsula de Macanao,San Francisco de Macanao,11.02596,-64.29352,Bajo,"Zona árida con vientos fuertes"
+ASIC 7,Villalba,El Guamache,10.74221,-63.89995,Alto,"Zonas de cultivo y ganadería intensiva"
+ASIC 7,Villalba,El Bichar,10.77041,-63.95514,Alto,"Pesca artesanal y turismo local - Riesgos por fauna Silvestre en Bahia el Saco"
+ASIC 7,Villalba,San Pedro,10.78138,-63.99432,Medio,"Estancamiento de agua en temporadas de lluvia en gran parte de la población"
+ASIC 2,Díaz,San Juan Bautista,11.01391,-63.95150,Medio,"Áreas agrícolas con riego artificial"
+ASIC 4,La Asunción (Centro histórico),11.03405,-63.86342,Medio,"Acumulación de agua en estructuras antiguas"
+ASIC 4,Maneiro,Poblacion de la salina de pampatar - Las Casitas de pampatar - Barrio los Pescadores,11.004453,-63.784280,Medio,"Zona costera por Presencia de humedales"
+ASIC 1,Tubores,Punta de piedra,10.901002259149918,-64.09074079181607,Medio,"Entrada de turismo - zona pesquera - Presencias de humedales"

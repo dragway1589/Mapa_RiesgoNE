@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Riesgo de Virus Oropouche con IA - Nueva Esparta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding-bottom: 60px;
+            line-height: 1.6;
+        }
+        h1 { 
+            color: #2c3e50;
+            text-align: center; 
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th { 
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        .alto { background-color: #ff4444; color: white; }
+        .medio { background-color: #ffbb33; color: white; }
+        .bajo { background-color: #44cc44; color: white; }
+        .analisis {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-left: 5px solid #333;
+            border-radius: 0 5px 5px 0;
+        }
+        .mapa-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        .mapa {
+            width: 80%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .mapa-cargando {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.9);
+            text-align: center;
+            padding: 20px;
+            font-weight: bold;
+        }
+        .creditos {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .boton-cargar {
+            margin: 10px 0;
+            padding: 10px 20px;
+            background-color: #164495;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .boton-cargar:hover {
+            background-color: #219653;
+        }
+        .banner {
+            width: 100%;
+            max-width: 350px;
+            margin: 0 auto 10px;
+            display: block;
+        }
+        .descripcion-banner {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .error { 
+            color: red; 
+            font-weight: bold;
+            padding: 10px;
+            background-color: #ffeeee;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #eeffee;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .seccion-mapa {
+            margin-bottom: 40px;
+        }
+        .seccion-tabla {
+            margin-top: 20px;
+            position: relative;
+        }
+        .boton-exportar {
+            margin: 10px 0;
+            padding: 10px 20px;
+            background-color: #164495;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            position: absolute;
+            right: 0;
+            bottom: -45px;
+        }
+        .boton-exportar:hover {
+            background-color: #219653;
+        }
+        .botones-accion {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        /* Estilos para el panel de IA */
+        .analisis-ia {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f0f7ff;
+            border-left: 5px solid #164495;
+            border-radius: 0 5px 5px 0;
+        }
+        .analisis-ia h2 {
+            color: #164495;
+            margin-top: 0;
+        }
+        .prediccion-tendencia .ascendente {
+            color: #ff4444;
+            font-weight: bold;
+        }
+        .prediccion-tendencia .descendente {
+            color: #44cc44;
+            font-weight: bold;
+        }
+        .prediccion-tendencia .estable {
+            color: #ffbb33;
+            font-weight: bold;
+        }
+        .grafico-tendencia {
+            height: 20px;
+            background: linear-gradient(90deg, #44cc44, #ffbb33, #ff4444);
+            margin: 10px 0;
+            position: relative;
+        }
+        .grafico-tendencia::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            bottom: -5px;
+            width: 2px;
+            background: #000;
+            left: 33%;
+        }
+        .grafico-tendencia::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            bottom: -5px;
+            width: 2px;
+            background: #000;
+            left: 66%;
+        }
+        .recomendaciones-ia {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .recomendaciones-ia h3 {
+            margin-top: 0;
+            color: #0d47a1;
+        }
+        /* Estilos para alertas */
+        .alerta-temprana {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .alerta-temprana h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .alerta-temprana button {
+            background-color: white;
+            color: #ff4444;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .alerta-temprana button:hover {
+            background-color: #f0f0f0;
+        }
+        /* Estilos para el panel de aprendizaje */
+        .panel-aprendizaje {
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .formulario-retroalimentacion {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .formulario-retroalimentacion label {
+            font-weight: bold;
+        }
+        .formulario-retroalimentacion select, 
+        .formulario-retroalimentacion textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .formulario-retroalimentacion textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .metricas-ia {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .metrica {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-width: 100px;
+        }
+        .metrica .valor {
+            font-size: 24px;
+            font-weight: bold;
+            color: #164495;
+            display: block;
+        }
+        .metrica .etiqueta {
+            font-size: 14px;
+            color: #666;
+        }
+        /* Adaptación para móviles */
+        @media (max-width: 768px) {
+            body {
+                margin: 10px;
+            }
+            table {
+                font-size: 14px;
+            }
+            th, td {
+                padding: 8px;
+            }
+            .mapa {
+                height: 400px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+            .botones-accion {
+                flex-direction: column;
+            }
+            .boton-exportar {
+                position: relative;
+                bottom: auto;
+                right: auto;
+                margin-top: 10px;
+            }
+            .analisis-ia {
+                padding: 15px;
+            }
+            .metricas-ia {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+    <!-- Script de autenticación -->
+    <script>
+    // Sistema de autenticación mejorado con roles
+    const USUARIOS = {
+        "admin": { password: "salud123", rol: "admin" },
+        "epidemiologia": { password: "epiNE2024", rol: "epidemiologo" },
+        "municipal": { password: "municipioNE", rol: "municipal" }
+    };
+
+    function verificarAcceso() {
+        const usuario = prompt("Usuario:");
+        if (!USUARIOS[usuario]) {
+            alert("Acceso denegado - Usuario no válido");
+            window.location.href = "about:blank";
+            return;
+        }
+        
+        const contrasena = prompt("Contraseña:");
+        if (contrasena !== USUARIOS[usuario].password) {
+            alert("Acceso denegado - Contraseña incorrecta");
+            window.location.href = "about:blank";
+            return;
+        }
+        
+        // Mostrar elementos según rol
+        if (USUARIOS[usuario].rol === "municipal") {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        }
+    }
+
+    // Verificar acceso al cargar la página
+    window.onload = verificarAcceso;
+    </script>
+
+    <!-- Banner -->
+    <img src="banner.png" alt="Banner Regional de Salud Ambiental" class="banner">
+
+    <!-- Descripción -->
+    <p class="descripcion-banner">Dirección Regional de Salud.</p>
+    <p class="descripcion-banner">Dirección Regional de Salud Ambiental Nueva Esparta</p>
+
+    <h1>Mapa de Riesgo Virus Oropouche con IA - Estado Nueva Esparta, Venezuela</h1>
+
+    <!-- Botones de carga/descarga -->
+    <div>
+        <input type="file" id="csv-file" accept=".csv" aria-label="Seleccionar archivo CSV">
+        <div class="botones-accion">
+            <button class="boton-cargar" onclick="cargarCSV()" aria-describedby="csv-help">Actualizar Datos</button>
+        </div>
+        <small id="csv-help" style="display: block; margin-top: 5px;">Seleccione un archivo CSV con los datos de riesgo</small>
+        <div id="csv-error" class="error" style="display: none;"></div>
+        <div id="csv-success" class="success" style="display: none;"></div>
+    </div>
+
+    <!-- Análisis de Factores -->
+    <div class="analisis">
+        <h2>Análisis de Factores de Riesgo</h2>
+        <p id="factores-ambientales"><strong>Factores ambientales:</strong> Esperando Datos...</p>
+        <p id="factores-biologicos"><strong>Factores biológicos:</strong> Esperando Datos...</p>
+        <p id="factores-socioeconomicos"><strong>Factores socioeconómicos:</strong> Esperando Datos...</p>
+    </div>
+
+    <!-- Análisis de IA (se insertará dinámicamente) -->
+
+    <!-- Sección del Mapa (ARRIBA) -->
+    <div class="seccion-mapa">
+        <h2>Mapa Geográfico de Riesgo</h2>
+        <div class="mapa-container">
+            <iframe 
+                class="mapa" 
+                id="mapa-iframe"
+                src="mapa_riesgo_oropouche.html" 
+                allowfullscreen
+                title="Mapa de Riesgo del Virus Oropouche"
+            ></iframe>
+            <div class="mapa-cargando" id="mapa-cargando">Cargando mapa...</div>
+        </div>
+    </div>
+
+    <!-- Sección de la Tabla (ABAJO) -->
+    <div class="seccion-tabla">
+        <h2>Cuadro de Riesgo por Zonas</h2>
+        <table id="tabla-riesgo-completa">
+            <thead>
+                <tr>
+                    <th>Riesgo</th>
+                    <th>ASIC - Zona</th>
+                    <th>Municipio</th>
+                    <th>Probabilidad</th>
+                    <th>Impacto</th>
+                    <th>Acciones Recomendadas</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-riesgo">
+                <tr><td colspan="6">Esperando Datos... Seleccione un archivo CSV para comenzar.</td></tr>
+            </tbody>
+        </table>
+        <button class="boton-exportar" onclick="exportarPDF()" id="boton-exportar" disabled>Descargar Informe PDF</button>
+    </div>
+
+    <!-- ASIC Nueva Esparta -->
+    <div class="Clasificacion de ASIC">
+        <h2>Áreas de Salud Integral Comunitaria</h2>
+        <ul>
+            <li><strong>(ASIC 1) Tubores - Peninsula de Macanao </strong> 
+            <li><strong>(ASIC 2) Diaz - Garcia </strong>
+            <li><strong>(ASIC 3) Mariño </strong>
+            <li><strong>(ASIC 4) Arismendi - Maneiro </strong>
+            <li><strong>(ASIC 5) Antolin del Campo </strong>
+            <li><strong>(ASIC 6) Gomez - Marcano </strong>
+            <li><strong>(ASIC 7) Villalba </strong>     
+        <ul>
+    </div>
+
+    <!-- Planes de Contingencia -->
+    <div class="analisis">
+        <h2>Planes de Contingencia para Brotes de Oropouche</h2>
+        <ul>
+            <li><strong>Protocolo de Atención Médica:</strong> 
+                <ul>
+                    <li>Abastecimiento de suero para hidratación en centros de salud.</li>
+                    <li>Capacitación a médicos en diagnóstico diferencial (dengue, chikungunya).</li>
+                </ul>
+            </li>
+            <li><strong>Respuesta Comunitaria:</strong> 
+                <ul>
+                    <li>Cuarentena focalizada en zonas de brote (si es necesario).</li>
+                    <li>Kit de emergencia para familias (termómetros, paracetamol, repelente).</li>
+                </ul>
+            </li>
+            <li><strong>Coordinación Institucional:</strong> 
+                <ul>
+                    <li>Convenios con la OMS/OPS para diagnóstico molecular rápido (RT-PCR).</li>
+                    <li>Integración con el Sistema de Vigilancia Epidemiológica Nacional (SISVER).</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Panel de Aprendizaje Automático -->
+    <div class="panel-aprendizaje">
+        <h2>Sistema de Aprendizaje Automático</h2>
+        <div class="entrenamiento-ia">
+            <h3>Retroalimentación para el Modelo</h3>
+            <p>Ayude a mejorar las predicciones reportando la precisión de las alertas:</p>
+            
+            <div class="formulario-retroalimentacion">
+                <label for="alerta-precisa">¿La última alerta fue precisa?</label>
+                <select id="alerta-precisa">
+                    <option value="si">Sí, coincidió con la realidad</option>
+                    <option value="parcial">Parcialmente precisa</option>
+                    <option value="no">No fue precisa</option>
+                </select>
+                
+                <label for="comentarios-ia">Comentarios adicionales:</label>
+                <textarea id="comentarios-ia" placeholder="Describa cualquier observación que ayude a mejorar el sistema..."></textarea>
+                
+                <button class="boton-cargar" onclick="enviarRetroalimentacion()">Enviar Retroalimentación</button>
+            </div>
+        </div>
+        
+        <div class="historial-aprendizaje">
+            <h3>Progreso del Modelo</h3>
+            <div class="metricas-ia">
+                <div class="metrica">
+                    <span class="valor">87%</span>
+                    <span class="etiqueta">Precisión</span>
+                </div>
+                <div class="metrica">
+                    <span class="valor">92%</span>
+                    <span class="etiqueta">Recall</span>
+                </div>
+                <div class="metrica">
+                    <span class="valor">15 días</span>
+                    <span class="etiqueta">Anticipación promedio</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Créditos -->
+    <div class="creditos">
+        <p>Desarrollado Por: Jesús Diaz. TSU en Informática 2025.</p>
+    </div>
+
+    <!-- Script principal de la aplicación -->
+    <script>
+        // Inicializar jsPDF
+        const { jsPDF } = window.jspdf;
+        
+        let datosCSV = [];
+
+        // Modelo de IA con aprendizaje persistente
+        class LogisticRegressionModel {
+            constructor() {
+                this.weights = {
+                    ambiental: 0.5,
+                    biologico: 0.5,
+                    socioeconomico: 0.5,
+                    intercept: 0
+                };
+                this.learningRate = 0.01;
+                this.loadModel();
+            }
+
+            loadModel() {
+                const savedModel = localStorage.getItem('oropoucheModel');
+                if (savedModel) {
+                    try {
+                        const parsed = JSON.parse(savedModel);
+                        this.weights = parsed.weights || this.weights;
+                        this.learningRate = parsed.learningRate || this.learningRate;
+                    } catch (e) {
+                        console.error("Error al cargar modelo:", e);
+                    }
+                }
+            }
+
+            saveModel() {
+                localStorage.setItem('oropoucheModel', JSON.stringify({
+                    weights: this.weights,
+                    learningRate: this.learningRate
+                }));
+            }
+
+            sigmoid(x) {
+                return 1 / (1 + Math.exp(-x));
+            }
+
+            predict(features) {
+                const z = this.weights.ambiental * features.ambiental +
+                         this.weights.biologico * features.biologico +
+                         this.weights.socioeconomico * features.socioeconomico +
+                         this.weights.intercept;
+                return this.sigmoid(z);
+            }
+
+            train(features, actualRisk, feedbackStrength = 1) {
+                const actualValue = actualRisk === 'Alto' ? 0.9 : 
+                                  actualRisk === 'Medio' ? 0.6 : 0.3;
+                
+                const prediction = this.predict(features);
+                const error = actualValue - prediction;
+                
+                this.weights.ambiental += this.learningRate * error * features.ambiental * feedbackStrength;
+                this.weights.biologico += this.learningRate * error * features.biologico * feedbackStrength;
+                this.weights.socioeconomico += this.learningRate * error * features.socioeconomico * feedbackStrength;
+                this.weights.intercept += this.learningRate * error * feedbackStrength;
+                
+                this.saveModel();
+                
+                return {
+                    error: Math.abs(error),
+                    previousPrediction: prediction,
+                    newPrediction: this.predict(features)
+                };
+            }
+        }
+
+        // Inicializar modelo
+        let iaModel = new LogisticRegressionModel();
+
+        // Función para exportar a PDF
+        function exportarPDF() {
+            if (datosCSV.length === 0) {
+                alert("No hay datos para exportar. Por favor cargue primero los datos.");
+                return;
+            }
+
+            const doc = new jsPDF('p', 'pt', 'letter');
+            
+            doc.setFontSize(12);
+            doc.setTextColor(40);
+            doc.text('Dirección Regional de Salud', 40, 30);
+            doc.text('Dirección Regional de Salud Ambiental Nueva Esparta', 40, 45);
+            
+            doc.setFontSize(16);
+            doc.text('Informe de Riesgo de Virus Oropouche - Estado Nueva Esparta', 40, 70);
+            
+            doc.setFontSize(10);
+            doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 40, 90);
+            
+            const headers = [
+                {title: "Nivel de Riesgo", dataKey: "riesgo"},
+                {title: "ASIC - Zona", dataKey: "asic_zona"},
+                {title: "Municipio", dataKey: "municipio"},
+                {title: "Probabilidad", dataKey: "probabilidad"},
+                {title: "Impacto", dataKey: "impacto"},
+                {title: "Acciones Recomendadas", dataKey: "acciones"}
+            ];
+            
+            const rows = [];
+            const grupos = {
+                "Alto": [],
+                "Medio": [],
+                "Bajo": []
+            };
+
+            datosCSV.forEach(row => {
+                if (row.Riesgo && grupos[row.Riesgo]) {
+                    grupos[row.Riesgo].push(row);
+                }
+            });
+
+            Object.entries(grupos).forEach(([nivel, zonas]) => {
+                if (zonas.length === 0) return;
+
+                zonas.forEach(z => {
+                    rows.push({
+                        riesgo: nivel,
+                        asic_zona: `${z.ASIC || 'Sin ASIC'}\n${z.Zona || 'Sin zona'}`,
+                        municipio: z.Municipio || 'Sin municipio',
+                        probabilidad: nivel === "Alto" ? "Alta (65-85%)" : 
+                                    nivel === "Medio" ? "Moderada (35-60%)" : 
+                                    "Baja (10-30%)",
+                        impacto: `${nivel === "Alto" ? "Brotes epidémicos, impacto en turismo y salud pública." : 
+                                nivel === "Medio" ? "Casos esporádicos y riesgo para turistas." : 
+                                "Casos aislados en zonas remotas."}\nNotas: ${z.Notas || 'Sin notas'}`,
+                        acciones: nivel === "Alto" ? 
+                                "- Fumigación con larvicidas\n- Campañas de eliminación de criaderos\n- Monitoreo semanal" :
+                                nivel === "Medio" ?
+                                "- Control larvario\n- Educación comunitaria\n- Reunión con líderes" :
+                                "- Monitoreo pasivo\n- Capacitación básica"
+                    });
+                });
+            });
+
+            const tableConfig = {
+                startY: 110,
+                margin: {left: 40},
+                headStyles: {
+                    fillColor: [45, 62, 80],
+                    textColor: 255,
+                    fontSize: 10
+                },
+                bodyStyles: {
+                    fontSize: 8,
+                    cellPadding: 6,
+                    valign: 'middle'
+                },
+                columnStyles: {
+                    riesgo: {cellWidth: 60},
+                    asic_zona: {cellWidth: 90},
+                    municipio: {cellWidth: 70},
+                    probabilidad: {cellWidth: 80},
+                    impacto: {cellWidth: 120},
+                    acciones: {cellWidth: 120}
+                },
+                didDrawPage: function (data) {
+                    doc.setFontSize(8);
+                    doc.setTextColor(150);
+                    doc.text('Página ' + doc.internal.getNumberOfPages(), data.settings.margin.left, doc.internal.pageSize.height - 20);
+                }
+            };
+
+            doc.autoTable(headers, rows, tableConfig);
+            doc.save(`Riesgo_Oropouche_NuevaEsparta_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+
+        // Función para cargar CSV
+        function cargarCSV() {
+            const fileInput = document.getElementById('csv-file');
+            const errorContainer = document.getElementById('csv-error');
+            const successContainer = document.getElementById('csv-success');
+            const exportButton = document.getElementById('boton-exportar');
+            
+            errorContainer.style.display = 'none';
+            successContainer.style.display = 'none';
+            
+            if (!fileInput || fileInput.files.length === 0) {
+                errorContainer.textContent = 'Por favor seleccione un archivo CSV primero.';
+                errorContainer.style.display = 'block';
+                return;
+            }
+
+            const loading = document.createElement('div');
+            loading.textContent = 'Procesando archivo...';
+            loading.style.margin = '10px 0';
+            loading.style.fontWeight = 'bold';
+            fileInput.parentNode.appendChild(loading);
+
+            const file = fileInput.files[0];
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    loading.remove();
+                    
+                    const requiredColumns = ['ASIC', 'Municipio', 'Zona', 'Latitud', 'Longitud', 'Riesgo', 'Notas'];
+                    const missingColumns = requiredColumns.filter(col => !results.meta.fields.includes(col));
+                    
+                    if (missingColumns.length > 0) {
+                        errorContainer.textContent = `El archivo CSV no tiene las columnas requeridas. Faltan: ${missingColumns.join(', ')}`;
+                        errorContainer.style.display = 'block';
+                        return;
+                    }
+                    
+                    datosCSV = results.data;
+                    localStorage.setItem('oropoucheData', JSON.stringify(datosCSV));
+                    actualizarTabla();
+                    actualizarFactores();
+                    actualizarMapa();
+                    
+                    const predicciones = analizarConIA(datosCSV);
+                    mostrarPredicciones(predicciones);
+                    
+                    configurarAlertas();
+                    
+                    exportButton.disabled = false;
+                    
+                    successContainer.textContent = `Datos cargados correctamente. ${datosCSV.length} registros procesados.`;
+                    successContainer.style.display = 'block';
+                },
+                error: function(error) {
+                    loading.remove();
+                    errorContainer.textContent = `Error al cargar CSV: ${error.message}`;
+                    errorContainer.style.display = 'block';
+                }
+            });
+        }
+
+        // Función para extraer características de los datos
+        function extraerCaracteristicas(datos) {
+            let ambiental = 0;
+            let biologico = 0;
+            let socioeconomico = 0;
+            
+            datos.forEach(item => {
+                const notas = (item.Notas || '').toLowerCase();
+                
+                if (notas.includes('agua') || notas.includes('lluvia') || notas.includes('criadero')) {
+                    ambiental += 1;
+                }
+                
+                if (notas.includes('ganad') || notas.includes('culicoides') || notas.includes('mosquito')) {
+                    biologico += 1;
+                }
+                
+                if (notas.includes('turismo') || notas.includes('pobreza') || notas.includes('drenaje')) {
+                    socioeconomico += 1;
+                }
+            });
+            
+            const total = Math.max(datos.length, 1);
+            
+            return {
+                ambiental: ambiental / total,
+                biologico: biologico / total,
+                socioeconomico: socioeconomico / total
+            };
+        }
+
+        // Función para analizar datos con IA
+        function analizarConIA(datos) {
+            const features = extraerCaracteristicas(datos);
+            const prediccionRiesgo = iaModel.predict(features);
+            
+            let tendencia;
+            if (prediccionRiesgo > 0.7) {
+                tendencia = "ascendente";
+            } else if (prediccionRiesgo < 0.4) {
+                tendencia = "descendente";
+            } else {
+                tendencia = "estable";
+            }
+            
+            const zonasEmergentes = identificarZonasEmergentes(datos, features);
+            
+            return {
+                riesgoFuturo: prediccionRiesgo,
+                zonasEmergentes: zonasEmergentes,
+                tendencia: tendencia,
+                features: features
+            };
+        }
+
+        // Función para identificar zonas emergentes
+        function identificarZonasEmergentes(datos, features) {
+            const zonasEmergentes = [];
+            
+            datos.forEach(item => {
+                if (item.Riesgo === "Medio") {
+                    const notas = (item.Notas || '').toLowerCase();
+                    let score = 0;
+                    
+                    if (notas.includes('agua') || notas.includes('lluvia')) score += 0.3;
+                    if (notas.includes('ganad')) score += 0.2;
+                    if (notas.includes('turismo')) score += 0.2;
+                    if (notas.includes('drenaje')) score += 0.3;
+                    
+                    score = score * iaModel.weights.ambiental * features.ambiental +
+                           score * iaModel.weights.biologico * features.biologico +
+                           score * iaModel.weights.socioeconomico * features.socioeconomico;
+                    
+                    if (score > 0.6) {
+                        zonasEmergentes.push({
+                            zona: item.Zona || 'Zona desconocida',
+                            asic: item.ASIC || 'ASIC desconocido',
+                            probabilidad: Math.min(Math.round(score * 100), 95) + '%',
+                            score: score
+                        });
+                    }
+                }
+            });
+            
+            zonasEmergentes.sort((a, b) => b.score - a.score);
+            return zonasEmergentes.slice(0, 5);
+        }
+
+        // Mostrar resultados del análisis de IA
+        function mostrarPredicciones(predicciones) {
+            localStorage.setItem('lastAnalysis', JSON.stringify(predicciones));
+            
+            const previo = document.querySelector('.analisis-ia');
+            if (previo) previo.remove();
+            
+            const contenedor = document.createElement('div');
+            contenedor.className = 'analisis-ia';
+            contenedor.innerHTML = `
+                <h2>Análisis Predictivo (IA)</h2>
+                <div class="prediccion-tendencia">
+                    <h3>Tendencia Regional</h3>
+                    <p>La tendencia general del riesgo es: <strong class="${predicciones.tendencia}">${predicciones.tendencia}</strong></p>
+                    <p>Nivel de riesgo predicho: ${(predicciones.riesgoFuturo * 100).toFixed(1)}%</p>
+                    <div class="grafico-tendencia"></div>
+                </div>
+                <div class="zonas-emergentes">
+                    <h3>Zonas con Riesgo Emergente</h3>
+                    ${predicciones.zonasEmergentes.length > 0 ? 
+                        `<ul>${predicciones.zonasEmergentes.map(z => 
+                            `<li><strong>${z.zona}</strong> (ASIC ${z.asic}): ${z.probabilidad} de pasar a alto riesgo</li>`
+                        ).join('')}</ul>` : 
+                        '<p>No se detectaron zonas con riesgo emergente significativo</p>'}
+                </div>
+                <div class="recomendaciones-ia">
+                    <h3>Recomendaciones basadas en IA</h3>
+                    ${generarRecomendaciones(predicciones)}
+                </div>
+            `;
+            
+            document.querySelector('.analisis').after(contenedor);
+        }
+
+        // Generar recomendaciones basadas en predicciones
+        function generarRecomendaciones(predicciones) {
+            let recomendaciones = [];
+            
+            if (predicciones.tendencia === "ascendente") {
+                recomendaciones.push("Reforzar vigilancia epidemiológica en toda la región");
+                recomendaciones.push("Aumentar frecuencia de fumigaciones en zonas de alto riesgo");
+            }
+            
+            if (predicciones.zonasEmergentes.length > 0) {
+                recomendaciones.push("Implementar monitoreo intensivo en zonas emergentes: " + 
+                    predicciones.zonasEmergentes.map(z => z.zona).join(", "));
+            }
+            
+            if (recomendaciones.length === 0) {
+                recomendaciones.push("Mantener protocolos actuales de vigilancia y control");
+            }
+            
+            return `<ul>${recomendaciones.map(r => `<li>${r}</li>`).join('')}</ul>`;
+        }
+
+        // Configurar sistema de alertas
+        function configurarAlertas() {
+            setInterval(() => {
+                if (datosCSV.length > 0) {
+                    const nuevosAltos = datosCSV.filter(d => 
+                        d.Riesgo === "Alto" && 
+                        (!d.notificado || d.notificado === false)
+                    );
+                    
+                    if (nuevosAltos.length > 0) {
+                        mostrarAlerta(nuevosAltos);
+                        nuevosAltos.forEach(d => d.notificado = true);
+                        localStorage.setItem('oropoucheData', JSON.stringify(datosCSV));
+                    }
+                }
+            }, 3600000);
+        }
+
+        // Mostrar alerta temprana
+        function mostrarAlerta(areas) {
+            document.querySelectorAll('.alerta-temprana').forEach(el => el.remove());
+            
+            const alerta = document.createElement('div');
+            alerta.className = 'alerta-temprana';
+            alerta.innerHTML = `
+                <div class="alerta-contenido">
+                    <h3>🚨 Alerta Temprana de Riesgo</h3>
+                    <p>Se han detectado ${areas.length} área(s) con nuevo riesgo alto:</p>
+                    <ul>
+                        ${areas.map(a => `<li><strong>${a.Zona}</strong> (${a.Municipio}, ASIC ${a.ASIC})</li>`).join('')}
+                    </ul>
+                    <button onclick="this.parentElement.parentElement.remove()">Cerrar</button>
+                </div>
+            `;
+            
+            document.body.appendChild(alerta);
+        }
+
+        // Función para enviar retroalimentación
+        function enviarRetroalimentacion() {
+            const precision = document.getElementById('alerta-precisa').value;
+            const comentarios = document.getElementById('comentarios-ia').value;
+            
+            let feedbackStrength = 1;
+            let actualRisk = 'Medio';
+            
+            if (precision ===

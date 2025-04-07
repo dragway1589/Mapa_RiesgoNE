@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Riesgo Oropouche - Nueva Esparta</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, sans-serif;
+        }
+        #map { 
+            height: 100vh;
+            width: 100%;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-content {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+        .legend {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        .legend h4 {
+            margin: 0 0 10px;
+            color: #333;
+            font-size: 16px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 1px solid #333;
+        }
+        .leaflet-popup-content {
+            min-width: 250px;
+        }
+        .popup-title {
+            color: #333;
+            margin: 0 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .popup-field {
+            margin: 8px 0;
+        }
+        .popup-field strong {
+            display: inline-block;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="loading" class="loading-overlay">
+        <div class="loading-content">
+            <h3>Cargando mapa de riesgo...</h3>
+            <p>Por favor espere mientras se cargan los datos</p>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Variables globales
+        let map;
+        let riskMarkers = [];
+        let predictionMarkers = [];
+        let currentData = [];
+        
+        // Inicialización del mapa
+        function initMap() {
+            // Configuración inicial del mapa centrado en Nueva Esparta
+            map = L.map('map', {
+                center: [11.0, -64.0],
+                zoom: 10,
+                zoomControl: true,
+                preferCanvas: true // Mejor rendimiento para muchos marcadores
+            });
+            
+            // Capa base de OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 18
+            }).addTo(map);
+            
+            // Añadir leyenda interactiva
+            addLegend();
+            
+            // Configurar comunicación con la ventana padre
+            setupParentCommunication();
+            
+            // Notificar que el mapa está listo
+            window.parent.postMessage({ type: 'mapReady' }, '*');
+        }
+        
+        // Añadir leyenda al mapa
+        function addLegend() {
+            const legend = L.control({ position: 'bottomright' });
+            
+            legend.onAdd = function() {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML = `
+                    <h4>Niveles de Riesgo</h4>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ff4444"></div>
+                        <span>Alto</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ffbb33"></div>
+                        <span>Medio</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #44cc44"></div>
+                        <span>Bajo</span>
+                    </div>
+                `;
+                return div;
+            };
+            
+            legend.addTo(map);
+        }
+        
+        // Configurar comunicación con la ventana padre
+        function setupParentCommunication() {
+            window.addEventListener('message', function(event) {
+                if (event.data.type === 'updateMapData') {
+                    currentData = event.data.data || [];
+                    updateMapData(currentData, event.data.predicciones);
+                }
+            });
+        }
+        
+        // Actualizar datos del mapa
+        function updateMapData(data, predictions = null) {
+            showLoading(true);
+            
+            // Limpiar marcadores existentes
+            clearMarkers();
+            
+            // Validar y procesar datos
+            if (!data || data.length === 0) {
+                showLoading(false);
+                return;
+            }
+            
+            // Procesar datos de riesgo
+            processRiskData(data);
+            
+            // Procesar predicciones si existen
+            if (predictions && predictions.zonasEmergentes) {
+                processPredictions(predictions.zonasEmergentes);
+            }
+            
+            // Ajustar vista del mapa
+            adjustMapView();
+            
+            showLoading(false);
+        }
+        
+        // Procesar datos de riesgo
+        function processRiskData(data) {
+            data.forEach(item => {
+                if (!isValidLocation(item)) return;
+                
+                const marker = createRiskMarker(item);
+                if (marker) {
+                    riskMarkers.push(marker);
+                    map.addLayer(marker);
+                }
+            });
+        }
+        
+        // Procesar datos de predicción
+        function processPredictions(predictions) {
+            predictions.forEach(pred => {
+                const marker = createPredictionMarker(pred);
+                if (marker) {
+                    predictionMarkers.push(marker);
+                    map.addLayer(marker);
+                }
+            });
+        }
+        
+        // Crear marcador de riesgo
+        function createRiskMarker(item) {
+            const lat = parseFloat(item.Latitud);
+            const lng = parseFloat(item.Longitud);
+            
+            if (isNaN(lat) || isNaN(lng)) return null;
+            
+            const marker = L.circleMarker([lat, lng], {
+                radius: 10,
+                fillColor: getColorByRisk(item.Riesgo),
+                color: '#333',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            });
+            
+            // Configurar popup
+            marker.bindPopup(createPopupContent(item));
+            
+            // Configurar tooltip
+            marker.bindTooltip(
+                `${item.ASIC || 'Zona'} - Riesgo ${item.Riesgo || 'desconocido'}`,
+                { direction: 'top', permanent: false }
+            );
+            
+            return marker;
+        }
+        
+        // Crear marcador de predicción
+        function createPredictionMarker(prediction) {
+            // Coordenadas simuladas - en producción usar datos reales
+            const baseLat = 11.0;
+            const baseLng = -64.0;
+            const lat = baseLat + (Math.random() * 0.3 - 0.15);
+            const lng = baseLng + (Math.random() * 0.3 - 0.15);
+            
+            const icon = L.divIcon({
+                className: 'prediction-icon',
+                html: '<div class="pulse-marker"></div>',
+                iconSize: [24, 24]
+            });
+            
+            const marker = L.marker([lat, lng], { icon: icon });
+            
+            marker.bindPopup(`
+                <div class="popup-content">
+                    <h4 class="popup-title">Alerta Predictiva</h4>
+                    <div class="popup-field">
+                        <strong>Zona:</strong> ${prediction.zona || 'No especificada'}
+                    </div>
+                    <div class="popup-field">
+                        <strong>ASIC:</strong> ${prediction.asic || 'No especificado'}
+                    </div>
+                    <div class="popup-field">
+                        <strong>Probabilidad:</strong> ${prediction.probabilidad || 'N/A'}
+                    </div>
+                </div>
+            `);
+            
+            return marker;
+        }
+        
+        // Crear contenido para popup
+        function createPopupContent(item) {
+            return `
+                <div class="popup-content">
+                    <h3 class="popup-title" style="color: ${getColorByRisk(item.Riesgo)}">
+                        ${item.ASIC || 'Área de riesgo'}
+                    </h3>
+                    <div class="popup-field">
+                        <strong>Riesgo:</strong> 
+                        <span style="color: ${getColorByRisk(item.Riesgo)}">
+                            ${item.Riesgo || 'No especificado'}
+                        </span>
+                    </div>
+                    <div class="popup-field">
+                        <strong>Municipio:</strong> ${item.Municipio || 'No especificado'}
+                    </div>
+                    <div class="popup-field">
+                        <strong>Zona:</strong> ${item.Zona || 'No especificado'}
+                    </div>
+                    <div class="popup-field">
+                        <strong>Notas:</strong> ${item.Notas || 'Ninguna'}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Limpiar todos los marcadores
+        function clearMarkers() {
+            riskMarkers.forEach(marker => map.removeLayer(marker));
+            predictionMarkers.forEach(marker => map.removeLayer(marker));
+            riskMarkers = [];
+            predictionMarkers = [];
+        }
+        
+        // Ajustar vista del mapa para mostrar todos los marcadores
+        function adjustMapView() {
+            if (riskMarkers.length > 0) {
+                const markerGroup = L.featureGroup(riskMarkers);
+                map.fitBounds(markerGroup.getBounds().pad(0.2));
+            }
+        }
+        
+        // Mostrar/ocultar pantalla de carga
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+        
+        // Validar ubicación
+        function isValidLocation(item) {
+            return item.Latitud && item.Longitud && 
+                   !isNaN(parseFloat(item.Latitud)) && 
+                   !isNaN(parseFloat(item.Longitud));
+        }
+        
+        // Obtener color según nivel de riesgo
+        function getColorByRisk(risk) {
+            switch((risk || '').toLowerCase()) {
+                case 'alto': return '#ff4444';
+                case 'medio': return '#ffbb33';
+                case 'bajo': return '#44cc44';
+                default: return '#777777';
+            }
+        }
+        
+        // Inicializar el mapa cuando se cargue la página
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html>
